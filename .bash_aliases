@@ -7,6 +7,7 @@ alias gd="git diff"
 alias gck="git checkout"
 alias glog-graph="git log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(dim white)- %an%C(reset)' --all"
 alias webpack-watch="./node_modules/.bin/encore dev --watch"
+alias webpack-ready-to-prod="./node_modules/.bin/encore production"
 
 # Alias BASHRC
 alias rm='rm -i' # -i -> demande de confirmation

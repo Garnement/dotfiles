@@ -123,3 +123,6 @@ sudo systemctl restart ntp
 export NVM_DIR="/home/vagrant/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
 fortune -a | cowsay -f $(cowsay -l | tail -n +2 | tr " " "\n" | shuf -n 1) | toilet --gay -f term
+
+# Add personnal folder to PATH
+export PATH=$PATH:/home/vagrant/bin/

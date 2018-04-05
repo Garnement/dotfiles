@@ -1,0 +1,32 @@
+{
+	"bootstrapped": true,
+	"in_process_packages":
+	[
+	],
+	"installed_packages":
+	[
+		"A File Icon",
+		"Alignment",
+		"AlignTab",
+		"Autoprefixer",
+		"BracketHighlighter",
+		"Cobalt2 Flat Theme",
+		"CodeFormatter",
+		"Color Highlighter",
+		"Emmet",
+		"GitGutter",
+		"JsPrettier",
+		"Material Theme",
+		"Package Control",
+		"PHP-Twig",
+		"Sass",
+		"SASS Snippets",
+		"SideBarEnhancements",
+		"SublimeCodeIntel",
+		"SublimeLinter",
+		"Theme - Cobalt2",
+		"TypeScript",
+		"TypescriptCompletion",
+		"W3CValidators"
+	]
+}

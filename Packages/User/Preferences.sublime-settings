@@ -1,6 +1,23 @@
 {
 	"atomic_save": false,
-	"color_scheme": "Packages/Theme - Cobalt2/cobalt2.tmTheme",
+	"binary_file_patterns":
+	[
+		"*.dds",
+		"*.eot",
+		"*.gif",
+		"*.ico",
+		"*.jar",
+		"*.jpeg",
+		"*.jpg",
+		"*.pdf",
+		"*.png",
+		"*.swf",
+		"*.tga",
+		"*.ttf",
+		"*.zip",
+		"dist/**"
+	],
+	"color_scheme": "Packages/User/Color Highlighter/themes/cobalt2.tmTheme",
 	"ensure_newline_at_eof_on_save": true,
 	"folder_exclude_patterns":
 	[
@@ -12,8 +29,13 @@
 		".cache/*",
 		".npm/*"
 	],
-	"font_face": "",
-	"font_size": 10,
+	"font_face": "Fira Code",
+	"font_options":
+	[
+		"gray_antialias",
+		"subpixel_antialias"
+	],
+	"font_size": 11,
 	"ignored_packages":
 	[
 		"Vintage"

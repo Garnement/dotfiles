@@ -7,23 +7,22 @@ import fnmatch
 import os
 import sys
 
-from re import match
-from re import search
+from re import match, compile as re_compile, M as RE_MULTILINE
 from subprocess import PIPE
 from subprocess import Popen
 
 import sublime
 import sublime_plugin
 
-#
-# Monkey patch `sublime.Region` so it can be iterable:
-sublime.Region.totuple = lambda self: (self.a, self.b)
-sublime.Region.__iter__ = lambda self: self.totuple().__iter__()
 
 PLUGIN_PATH = os.path.join(sublime.packages_path(), os.path.dirname(os.path.realpath(__file__)))
 
 IS_ST3 = int(sublime.version()) >= 3000
 IS_PY2 = sys.version_info[0] == 2
+
+SYNTAX_ERROR_RE = re_compile(
+    r'^.+?:\s(?:(?P<error>SyntaxError)):\s(?P<message>.+) \((?P<line>\d+):(?P<col>\d+)\)',
+    RE_MULTILINE)
 
 if IS_PY2:
     # st with python 2x
@@ -39,6 +38,8 @@ if IS_PY2:
     from jsprettier.sthelper import has_selection
     from jsprettier.sthelper import is_file_auto_formattable
     from jsprettier.sthelper import log_debug
+    from jsprettier.sthelper import log_error
+    from jsprettier.sthelper import log_warn
     from jsprettier.sthelper import resolve_prettier_cli_path
     from jsprettier.sthelper import scroll_view_to
     from jsprettier.sthelper import st_status_message
@@ -56,8 +57,6 @@ if IS_PY2:
     from jsprettier.util import is_str_none_or_empty
     from jsprettier.util import is_windows
     from jsprettier.util import list_to_str
-    from jsprettier.util import log_error
-    from jsprettier.util import log_warn
     from jsprettier.util import parse_additional_cli_args
     from jsprettier.util import resolve_prettier_ignore_path
     from jsprettier.util import trim_trailing_ws_and_lines
@@ -74,6 +73,8 @@ else:
     from .jsprettier.sthelper import has_selection
     from .jsprettier.sthelper import is_file_auto_formattable
     from .jsprettier.sthelper import log_debug
+    from .jsprettier.sthelper import log_error
+    from .jsprettier.sthelper import log_warn
     from .jsprettier.sthelper import resolve_prettier_cli_path
     from .jsprettier.sthelper import scroll_view_to
     from .jsprettier.sthelper import st_status_message
@@ -91,8 +92,7 @@ else:
     from .jsprettier.util import is_str_none_or_empty
     from .jsprettier.util import is_windows
     from .jsprettier.util import list_to_str
-    from .jsprettier.util import log_error
-    from .jsprettier.util import log_warn
+
     from .jsprettier.util import parse_additional_cli_args
     from .jsprettier.util import resolve_prettier_ignore_path
     from .jsprettier.util import trim_trailing_ws_and_lines
@@ -163,21 +163,25 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
                 additional_cli_arg_config = in_source_file_path_or_project_root(
                     source_file_dir, st_project_path, additional_cli_arg_config)
                 if additional_cli_arg_config and os.path.exists(additional_cli_arg_config):
-                    log_debug(view, "Using Prettier config defined in 'additional_cli_args' config -> {0}'"
-                                    "".format(additional_cli_arg_config))
+                    log_debug(view, "Using Prettier config file defined in 'additional_cli_args' config -> {0}'"
+                                    "".format(additional_cli_arg_config), True)
                     return additional_cli_arg_config
-                log_warn("Cannot find Prettier config defined in 'additional_cli_args' -> '--config <path>'.")
+
+                log_warn("Cannot find Prettier config file defined "
+                         "in 'additional_cli_args' -> '--config <path>'.", True)
+
                 return None
 
         #
         # 2. Attempt to resolve a prettier config path:
         resolved_prettier_config = find_prettier_config(source_file_dir)
         if resolved_prettier_config and os.path.exists(resolved_prettier_config):
-            log_debug(view, "Prettier config resolved at '{0}'".format(resolved_prettier_config))
+            log_debug(view, "Prettier config file discovered at '{0}'".format(resolved_prettier_config))
             return resolved_prettier_config
 
-        log_debug(view, "Unable to resolve a Prettier config file. "
-                        "Using options defined in '{0}'.".format(SETTINGS_FILENAME))
+        log_debug(view, "Prettier config file not found. "
+                        "Will use Prettier options defined in Sublime Text '{0}' file."
+                  .format(SETTINGS_FILENAME), True)
 
         return None
 
@@ -230,7 +234,8 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
         has_config_precedence_defined = parsed_additional_cli_args.count('--config-precedence') > 0
 
         prettier_config_path = None
-        if not has_no_config_defined:
+        # only try to resolve prettier config if '--no-config' or '--config' are NOT in 'additional_cli_args'
+        if not has_no_config_defined and not has_custom_config_defined:
             if save_file and auto_format_prettier_config_path and os.path.exists(auto_format_prettier_config_path):
                 prettier_config_path = auto_format_prettier_config_path
             if not prettier_config_path:
@@ -239,7 +244,6 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
                     prettier_config_path = resolved_prettier_config
         if not prettier_config_path or not os.path.exists(prettier_config_path):
             prettier_config_path = ''
-            has_custom_config_defined = False
 
         #
         # Get node and prettier command paths:
@@ -274,10 +278,14 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
             if is_str_empty_or_whitespace_only(source):
                 return st_status_message('Nothing to format in file.')
 
-            transformed = self.format_code(source, node_path, prettier_cli_path, prettier_options, view)
+            result = self.format_code(
+                source, node_path, prettier_cli_path, prettier_options, view,
+                provide_cursor=True)
             if self.has_error:
                 self.format_console_error()
                 return self.show_status_bar_error()
+
+            transformed, new_cursor = result
 
             # sanity check to ensure textual content was returned from cmd
             # stdout, not necessarily caught in OSError try/catch
@@ -304,6 +312,8 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
                 source_modified = True
 
             if source_modified:
+                view.sel().clear()
+                view.sel().add(sublime.Region(new_cursor))
                 st_status_message('File formatted.')
             else:
                 st_status_message('File already formatted.')
@@ -339,8 +349,13 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
                 view.replace(edit, region, transformed)
                 st_status_message('Selection(s) formatted.')
 
-    def format_code(self, source, node_path, prettier_cli_path, prettier_options, view):
+    def format_code(self, source, node_path, prettier_cli_path, prettier_options, view, provide_cursor=False):
         self._error_message = None
+
+        cursor = None
+        if provide_cursor:
+            cursor = view.sel()[0].a
+            prettier_options += ['--cursor-offset', str(cursor)]
 
         if is_str_none_or_empty(node_path):
             cmd = [prettier_cli_path] \
@@ -373,9 +388,23 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
                     scroll_view_to(view, error_line, error_col)
 
                 return None
+
+            new_cursor = None
             if stderr:
+                stderr_output = stderr.decode('utf-8')
+                if provide_cursor:
+                    stderr_lines = stderr_output.splitlines()
+                    stderr_output, new_cursor = '\n'.join(stderr_lines[:-1]), stderr_lines[-1]
+
                 # allow warnings to pass-through
-                print(format_error_message(stderr.decode('utf-8'), str(proc.returncode)))
+                if stderr_output:
+                    print(format_error_message(stderr_output, str(proc.returncode)))
+
+            if provide_cursor:
+                if not new_cursor and cursor is not None:
+                    new_cursor = cursor
+                return stdout.decode('utf-8'), int(new_cursor)
+
             return stdout.decode('utf-8')
         except OSError as ex:
             sublime.error_message('{0} - {1}'.format(PLUGIN_NAME, ex))
@@ -388,6 +417,8 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
         if self.is_source_js(view) is True:
             return True
         if self.is_css(view) is True:
+            return True
+        if self.is_html(view) is True:
             return True
         if is_file_auto_formattable(view) is True:
             return True
@@ -431,7 +462,7 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
         for mapping in PRETTIER_OPTION_CLI_MAP:
             option_name = mapping['option']
             cli_option_name = mapping['cli']
-            option_value = get_sub_setting(self.view, option_name)
+            option_value = get_sub_setting(view, option_name)
 
             if option_name == 'parser':
                 if self.is_css(view):
@@ -464,6 +495,16 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
                     prettier_options.append('vue')
                     continue
 
+                if self.is_source_js(view):
+                    prettier_options.append(cli_option_name)
+                    prettier_options.append('babylon')
+                    continue
+
+                if self.is_html(view):
+                    prettier_options.append(cli_option_name)
+                    prettier_options.append('parse5')
+                    continue
+
             if not prettier_config_exists and not has_custom_config_defined:
                 # add the cli args or the respective defaults:
                 if option_value is None or str(option_value) == '':
@@ -482,16 +523,16 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
         prettier_options.append('--use-tabs')
         prettier_options.append(str(self.use_tabs).lower())
 
+        if prettier_ignore_filepath is not None:
+            prettier_options.append('--ignore-path')
+            prettier_options.append(prettier_ignore_filepath)
+
         # add the current file name to `--stdin-filepath`, only when
         # the current file being edited is NOT html, and in order
         # detect and format css/js selection(s) within html files:
         if not self.is_html(view):
             prettier_options.append('--stdin-filepath')
             prettier_options.append(file_name)
-
-        if prettier_ignore_filepath is not None:
-            prettier_options.append('--ignore-path')
-            prettier_options.append(prettier_ignore_filepath)
 
         # Append any additional specified arguments:
         prettier_options.extend(parsed_additional_cli_args)
@@ -508,8 +549,7 @@ class JsPrettierCommand(sublime_plugin.TextCommand):
         message = ''
         line = -1
         col = -1
-        match_groups = search(
-            r'^.+?:\s(?:(?P<error>SyntaxError)):\s(?P<message>.+) \((?P<line>\d+):(?P<col>\d+)\)', error_output)
+        match_groups = SYNTAX_ERROR_RE.search(error_output)
         if match_groups:
             error = match_groups.group('error')
             message = match_groups.group('message')

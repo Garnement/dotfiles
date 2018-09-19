@@ -77,7 +77,7 @@ parse_git_branch() {
 }
 #export PS1="\u@\h \[\033[32m\]\w\[\033[33m\]\$(parse_git_branch)\[\033[00m\] $ "
 
-export PS1="\[$(tput bold)\]\[\033[38;5;20m\]\u\[$(tput sgr0)\]\[$(tput sgr0)\]\[\033[38;5;7m\]@\[$(tput sgr0)\]\[\033[38;5;15m\]\h\[$(tput sgr0)\]\[\033[38;5;214m\]\w\[$(tput bold)\]\[$(tput sgr0)\]\[\033[38;5;48m\]\$(parse_git_branch)\[\033[00m\]:->\[$(tput sgr0)\]"
+export PS1="⚡\[$(tput bold)\]\[\033[38;5;20m\]\u\[$(tput sgr0)\]\[$(tput sgr0)\]\[\033[38;5;7m\]@\[$(tput sgr0)\]\[\033[38;5;15m\]\h\[$(tput sgr0)\]\[\033[38;5;214m\]\w\[$(tput bold)\]\[$(tput sgr0)\]\[\033[38;5;48m\]\$(parse_git_branch)\[\033[00m\]🔥->\[$(tput sgr0)\]"
 
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
@@ -118,11 +118,11 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-sudo systemctl restart ntp
+#sudo systemctl restart ntp
 
 export NVM_DIR="/home/vagrant/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
-fortune -a | cowsay -f $(cowsay -l | tail -n +2 | tr " " "\n" | shuf -n 1) | toilet --gay -f term
+#fortune -a | cowsay -f $(cowsay -l | tail -n +2 | tr " " "\n" | shuf -n 1) | toilet --gay -f term
 
 # Add personnal folder to PATH
-export PATH=$PATH:/home/vagrant/bin/
+export PATH=$PATH:/home/vagrant/bin/:$HOME/App/

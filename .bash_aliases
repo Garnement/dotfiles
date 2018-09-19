@@ -29,3 +29,6 @@ alias lr='ls -lRh --color=auto' # recursive ls
 alias grep='grep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias egrep='egrep --color=auto'
+
+# Alias utilities
+alias wizsshfs='sshfs vagrant@wiz.local:/home/vagrant Redcurrents/'

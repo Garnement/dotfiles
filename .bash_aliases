@@ -1,4 +1,5 @@
 alias laurent-can-do-it="wizdocker"
+alias laurent-can-clean-it="wizdocker cc --logs"
 alias gba="git branch -a"
 alias gs="git status"
 alias gad="git add"
@@ -6,8 +7,10 @@ alias commit="git commit"
 alias gd="git diff"
 alias gck="git checkout"
 alias glog-graph="git log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(dim white)- %an%C(reset)' --all"
+alias webpack="./node_modules/.bin/encore --dev"
 alias webpack-watch="./node_modules/.bin/encore dev --watch"
 alias webpack-ready-to-prod="./node_modules/.bin/encore production"
+alias clean-webpack-css="rm -rf Resources/public/dist && git checkout Resources/public/dist"
 
 # Alias BASHRC
 alias rm='rm -i' # -i -> demande de confirmation
